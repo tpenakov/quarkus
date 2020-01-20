@@ -1,25 +1,22 @@
 package io.quarkus.tika.deployment;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-
+import io.quarkus.runtime.configuration.QuarkusConfigFactory;
+import io.quarkus.tika.runtime.TikaParserParameter;
+import io.smallrye.config.SmallRyeConfig;
+import io.smallrye.config.SmallRyeConfigBuilder;
+import org.apache.xmlbeans.XmlObject;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.impl.DocumentDocumentImpl;
+import org.reflections.Reflections;
 
-import io.quarkus.runtime.configuration.QuarkusConfigFactory;
-import io.quarkus.tika.runtime.TikaParserParameter;
-import io.smallrye.config.SmallRyeConfig;
-import io.smallrye.config.SmallRyeConfigBuilder;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TikaProcessorTest {
 
@@ -113,6 +110,19 @@ public class TikaProcessorTest {
     public void testSupportedParserNamesWithTikaConfigPath() throws Exception {
         Set<String> names = getParserNames("tika-config.xml", "pdf");
         assertEquals(69, names.size());
+    }
+
+    @Test
+    public void testReflection() throws Exception {
+        String packageName = DocumentDocumentImpl.class.getPackage().getName();
+        Reflections reflections = new Reflections(packageName);
+        Set<Class<? extends XmlObject>> types = reflections.getSubTypesOf(XmlObject.class)
+                .stream()
+                .filter(aClass -> !aClass.isInterface())
+                .filter(aClass -> aClass.getPackage().getName().equals(packageName))
+                .collect(Collectors.toSet());
+        ;
+        assertTrue(types.size() > 0);
     }
 
     private Set<String> getParserNames(String tikaConfigPath, String parsers) throws Exception {

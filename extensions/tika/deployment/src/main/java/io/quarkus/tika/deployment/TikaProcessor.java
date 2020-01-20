@@ -1,21 +1,5 @@
 package io.quarkus.tika.deployment;
 
-import java.util.*;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-
-import javax.xml.parsers.SAXParserFactory;
-
-import org.apache.tika.detect.Detector;
-import org.apache.tika.detect.EncodingDetector;
-import org.apache.tika.parser.Parser;
-import org.apache.xerces.xni.parser.XMLParserConfiguration;
-import org.apache.xmlbeans.*;
-import org.jboss.jandex.DotName;
-import org.jboss.jandex.Type;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.*;
-
 import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
 import io.quarkus.arc.deployment.BeanContainerBuildItem;
 import io.quarkus.deployment.Capabilities;
@@ -25,7 +9,6 @@ import io.quarkus.deployment.annotations.ExecutionTime;
 import io.quarkus.deployment.annotations.Record;
 import io.quarkus.deployment.builditem.CapabilityBuildItem;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
-import io.quarkus.deployment.builditem.IndexDependencyBuildItem;
 import io.quarkus.deployment.builditem.JniBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.*;
 import io.quarkus.deployment.util.ServiceUtil;
@@ -34,6 +17,19 @@ import io.quarkus.tika.runtime.TikaConfiguration;
 import io.quarkus.tika.runtime.TikaParserParameter;
 import io.quarkus.tika.runtime.TikaParserProducer;
 import io.quarkus.tika.runtime.TikaRecorder;
+import org.apache.tika.detect.Detector;
+import org.apache.tika.detect.EncodingDetector;
+import org.apache.tika.parser.Parser;
+import org.apache.xerces.xni.parser.XMLParserConfiguration;
+import org.apache.xmlbeans.XmlObject;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.impl.DocumentDocumentImpl;
+import org.reflections.Reflections;
+
+import javax.xml.parsers.SAXParserFactory;
+import java.util.*;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class TikaProcessor {
     private static final Set<String> NOT_NATIVE_READY_PARSERS = Arrays.stream(new String[] {
@@ -91,13 +87,6 @@ public class TikaProcessor {
     }
 
     @BuildStep
-    public void registerOOXMLIndexDependency(BuildProducer<IndexDependencyBuildItem> resource) throws Exception {
-        resource.produce(new IndexDependencyBuildItem("org.apache.xmlbeans", "xmlbeans"));
-        //        resource.produce(new IndexDependencyBuildItem("org.apache.poi", "ooxml-schemas"));
-        resource.produce(new IndexDependencyBuildItem("org.apache.poi", "poi-ooxml-schemas"));
-    }
-
-    @BuildStep
     public void registerOOXMLReflection(BuildProducer<ReflectiveClassBuildItem> resource) throws Exception {
         //https://github.com/quarkusio/quarkus/issues/6549
 
@@ -125,83 +114,14 @@ public class TikaProcessor {
         resource.produce(new ReflectiveClassBuildItem(true, true,
                 "schemaorg_apache_xmlbeans.system.sD023D6490046BA0250A839A9AD24C443.TypeSystemHolder"));
 
-        resource.produce(new ReflectiveClassBuildItem(true, true,
-                "org.openxmlformats.schemas.wordprocessingml.x2006.main.impl.DocumentDocumentImpl"));
-        resource.produce(new ReflectiveClassBuildItem(true, true,
-                "org.openxmlformats.schemas.wordprocessingml.x2006.main.impl.CTDocumentBaseImpl"));
-        resource.produce(new ReflectiveClassBuildItem(true, true,
-                "org.openxmlformats.schemas.wordprocessingml.x2006.main.impl.CTDocument1Impl"));
-        resource.produce(new ReflectiveClassBuildItem(true, true,
-                "org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody"));
-        resource.produce(new ReflectiveClassBuildItem(true, true,
-                "org.openxmlformats.schemas.wordprocessingml.x2006.main.impl.CTBodyImpl"));
-        resource.produce(new ReflectiveClassBuildItem(true, true,
-                "org.openxmlformats.schemas.wordprocessingml.x2006.main.impl.CTSectPrImpl"));
-        resource.produce(new ReflectiveClassBuildItem(true, true,
-                "org.openxmlformats.schemas.wordprocessingml.x2006.main.impl.CTBackgroundImpl"));
-    }
-
-    @BuildStep
-    public void registerOOXMLHierarchyReflection(BuildProducer<ReflectiveHierarchyBuildItem> resource) throws Exception {
-        //            //https://github.com/quarkusio/quarkus/issues/6549
-        //
-        //            //resource.produce(new ReflectiveClassBuildItem(true, true, "org.apache.xmlbeans.impl.values.XmlComplexContentImpl"));
-        //            //resource.produce(new ReflectiveClassBuildItem(true, true, "org.apache.xmlbeans.impl.store.Cursor"));
-        //            //        resource.produce(new ReflectiveHierarchyBuildItem(
-        //            //                Type.create(DotName.createSimple(XmlObject.class.getName()), Type.Kind.CLASS)));
-        //            //        resource.produce(new ReflectiveHierarchyBuildItem(
-        //            //                Type.create(DotName.createSimple(TypeStoreUser.class.getName()), Type.Kind.CLASS)));
-        //            //resource.produce(new ReflectiveClassBuildItem(true, true, "org.apache.xmlbeans.impl.schema.SchemaTypeLoaderImpl"));
-        //            resource.produce(new ReflectiveHierarchyBuildItem(
-        //                    Type.create(DotName.createSimple(SchemaTypeLoader.class.getName()), Type.Kind.CLASS)));
-        //
-        //            //resource.produce(new ReflectiveClassBuildItem(true, true, "org.apache.xmlbeans.impl.schema.SchemaTypeImpl"));
-        //            //        resource.produce(new ReflectiveHierarchyBuildItem(
-        //            //                Type.create(DotName.createSimple(SchemaComponent.class.getName()), Type.Kind.CLASS)));
-        //            //        resource.produce(new ReflectiveHierarchyBuildItem(
-        //            //                Type.create(DotName.createSimple(SchemaAnnotated.class.getName()), Type.Kind.CLASS)));
-        //            resource.produce(new ReflectiveHierarchyBuildItem(
-        //                    Type.create(DotName.createSimple(SchemaType.class.getName()), Type.Kind.CLASS)));
-        //
-        //            //resource.produce(new ReflectiveClassBuildItem(true, true, "org.apache.xmlbeans.impl.schema.SchemaTypeSystemImpl"));
-        //            resource.produce(new ReflectiveHierarchyBuildItem(
-        //                    Type.create(DotName.createSimple(SchemaTypeSystem.class.getName()), Type.Kind.CLASS)));
-        //
-        //            //resource.produce(new ReflectiveClassBuildItem(true, true, "org.apache.xmlbeans.impl.store.Locale"));
-        //            //        resource.produce(new ReflectiveHierarchyBuildItem(
-        //            //                Type.create(DotName.createSimple(XmlLocale.class.getName()), Type.Kind.CLASS)));
-        //            resource.produce(new ReflectiveHierarchyBuildItem(
-        //                    Type.create(DotName.createSimple(Locale.class.getName()), Type.Kind.CLASS)));
-        //            //        resource.produce(
-        //            //                new ReflectiveHierarchyBuildItem(Type.create(DotName.createSimple(Saaj.class.getName()), Type.Kind.CLASS)));
-        //            //        resource.produce(new ReflectiveHierarchyBuildItem(
-        //            //                Type.create(DotName.createSimple(Saaj.SaajCallback.class.getName()), Type.Kind.CLASS)));
-        //            //        resource.produce(new ReflectiveHierarchyBuildItem(
-        //            //                Type.create(DotName.createSimple(DOMImplementation.class.getName()), Type.Kind.CLASS)));
-        //
-        //            //resource.produce(new ReflectiveClassBuildItem(true, true, "org.openxmlformats.schemas.wordprocessingml.x2006.main.impl.DocumentDocumentImpl"));
-        //            resource.produce(new ReflectiveHierarchyBuildItem(
-        //                    Type.create(DotName.createSimple(DocumentDocument.class.getName()), Type.Kind.CLASS)));
-        //
-        //            //resource.produce(new ReflectiveClassBuildItem(true, true, "org.openxmlformats.schemas.wordprocessingml.x2006.main.impl.CTDocumentBaseImpl"));
-        //            resource.produce(new ReflectiveHierarchyBuildItem(
-        //                    Type.create(DotName.createSimple(CTDocumentBase.class.getName()), Type.Kind.CLASS)));
-        //
-        //            //resource.produce(new ReflectiveClassBuildItem(true, true, "org.openxmlformats.schemas.wordprocessingml.x2006.main.impl.CTDocument1Impl"));
-        //            resource.produce(new ReflectiveHierarchyBuildItem(
-        //                    Type.create(DotName.createSimple(CTDocument1.class.getName()), Type.Kind.CLASS)));
-        //
-        //            //resource.produce(new ReflectiveClassBuildItem(true, true, "org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody"));
-        //            //        resource.produce(new ReflectiveHierarchyBuildItem(
-        //            //                Type.create(DotName.createSimple(XmlTokenSource.class.getName()), Type.Kind.CLASS)));
-
-        //resource.produce(new ReflectiveClassBuildItem(true, true,"org.openxmlformats.schemas.wordprocessingml.x2006.main.impl.CTBodyImpl"));
-        resource.produce(
-                new ReflectiveHierarchyBuildItem(Type.create(DotName.createSimple(CTBody.class.getName()), Type.Kind.CLASS)));
-
-        //            //resource.produce(new ReflectiveClassBuildItem(true, true, "org.openxmlformats.schemas.wordprocessingml.x2006.main.impl.CTSectPrImpl"));
-        //            resource.produce(
-        //                    new ReflectiveHierarchyBuildItem(Type.create(DotName.createSimple(CTSectPr.class.getName()), Type.Kind.CLASS)));
+        String wordprocessingImplPackageName = DocumentDocumentImpl.class.getPackage().getName();
+        Reflections reflections = new Reflections(wordprocessingImplPackageName);
+        reflections.getSubTypesOf(XmlObject.class)
+                .stream()
+                .filter(aClass -> !aClass.isInterface())
+                .filter(aClass -> aClass.getPackage().getName().equals(wordprocessingImplPackageName))
+                .forEach(aClass -> resource.produce(
+                        new ReflectiveClassBuildItem(true, true, true, aClass)));
     }
 
     @BuildStep
