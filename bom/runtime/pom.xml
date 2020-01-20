@@ -2514,6 +2514,12 @@
                 <groupId>org.kie.kogito</groupId>
                 <artifactId>drools-decisiontables</artifactId>
                 <version>${kogito.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.apache.poi</groupId>
+                        <artifactId>poi-ooxml</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
                 <groupId>org.kie.kogito</groupId>

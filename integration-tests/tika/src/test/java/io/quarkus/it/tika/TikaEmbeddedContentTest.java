@@ -35,6 +35,25 @@ public class TikaEmbeddedContentTest {
                 .body(containsString("The quick brown fox jumps over the lazy dog"));
     }
 
+    @Test
+    public void contentTypeText() throws Exception {
+        given()
+                .when()
+                .body(readTestFile("testDOCX_embedded.docx"))
+                .post("/embedded/contentType")
+                .then()
+                .statusCode(200)
+                .body(containsString("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
+
+        given()
+                .when()
+                .body(readTestFile("testEXCEL_embeded.xls"))
+                .post("/embedded/contentType")
+                .then()
+                .statusCode(200)
+                .body(containsString("application/vnd.ms-excel"));
+    }
+
     private byte[] readTestFile(String fileName) throws Exception {
         try (InputStream is = getClass().getClassLoader().getResourceAsStream(fileName)) {
             return readBytes(is);
