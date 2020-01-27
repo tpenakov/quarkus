@@ -1,14 +1,13 @@
 package io.quarkus.it.tika;
 
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.CoreMatchers.containsString;
+import io.quarkus.test.junit.QuarkusTest;
+import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 
-import org.junit.jupiter.api.Test;
-
-import io.quarkus.test.junit.QuarkusTest;
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.CoreMatchers.containsString;
 
 @QuarkusTest
 public class TikaEmbeddedContentTest {
@@ -36,22 +35,33 @@ public class TikaEmbeddedContentTest {
     }
 
     @Test
-    public void contentTypeText() throws Exception {
-        given()
-                .when()
-                .body(readTestFile("testDOCX_embedded.docx"))
-                .post("/embedded/contentType")
-                .then()
-                .statusCode(200)
-                .body(containsString("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
+    public void contentTypePPTXText() throws Exception {
+        contentTypeText("testPPTX_embedded.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
+    }
 
+    @Test
+    public void contentTypeXLSXText() throws Exception {
+        contentTypeText("testXLSX_embedded.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    }
+
+    @Test
+    public void contentTypeDOCXText() throws Exception {
+        contentTypeText("testDOCX_embedded.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    }
+
+    @Test
+    public void contentTypeEXCELText() throws Exception {
+        contentTypeText("testEXCEL_embeded.xls", "application/vnd.ms-excel");
+    }
+
+    private void contentTypeText(String fileName, String expected) throws Exception {
         given()
                 .when()
-                .body(readTestFile("testEXCEL_embeded.xls"))
+                .body(readTestFile(fileName))
                 .post("/embedded/contentType")
                 .then()
                 .statusCode(200)
-                .body(containsString("application/vnd.ms-excel"));
+                .body(containsString(expected));
     }
 
     private byte[] readTestFile(String fileName) throws Exception {

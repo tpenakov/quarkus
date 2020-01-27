@@ -11,21 +11,31 @@ import io.quarkus.deployment.builditem.CapabilityBuildItem;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.builditem.JniBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.*;
+import io.quarkus.deployment.util.ReflectUtil;
 import io.quarkus.deployment.util.ServiceUtil;
 import io.quarkus.tika.TikaParseException;
 import io.quarkus.tika.runtime.TikaConfiguration;
 import io.quarkus.tika.runtime.TikaParserParameter;
 import io.quarkus.tika.runtime.TikaParserProducer;
 import io.quarkus.tika.runtime.TikaRecorder;
+import org.apache.poi.ooxml.POIXMLDocumentPart;
+import org.apache.poi.xslf.usermodel.XSLFTheme;
+import org.apache.poi.xwpf.usermodel.XWPFSettings;
+import org.apache.poi.xwpf.usermodel.XWPFStyles;
 import org.apache.tika.detect.Detector;
 import org.apache.tika.detect.EncodingDetector;
 import org.apache.tika.parser.Parser;
+import org.apache.xerces.parsers.XIncludeAwareParserConfiguration;
 import org.apache.xerces.xni.parser.XMLParserConfiguration;
 import org.apache.xmlbeans.XmlObject;
+import org.openxmlformats.schemas.drawingml.x2006.main.impl.ThemeDocumentImpl;
+import org.openxmlformats.schemas.presentationml.x2006.main.STPlaceholderType;
+import org.openxmlformats.schemas.presentationml.x2006.main.impl.PresentationDocumentImpl;
+import org.openxmlformats.schemas.spreadsheetml.x2006.main.impl.CalcChainDocumentImpl;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.impl.DocumentDocumentImpl;
-import org.reflections.Reflections;
 
 import javax.xml.parsers.SAXParserFactory;
+import javax.xml.transform.TransformerFactory;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -45,7 +55,7 @@ public class TikaProcessor {
     private static final Map<String, String> PARSER_ABBREVIATIONS = Arrays.stream(new String[][] {
             { "pdf", "org.apache.tika.parser.pdf.PDFParser" },
             { "odf", "org.apache.tika.parser.odf.OpenDocumentParser" },
-            { "ooxml", "org.apache.tika.parser.microsoft.ooxml.OOXMLParser" }, // TODO: 17.01.20 г. write a test about this
+            { "ooxml", "org.apache.tika.parser.microsoft.ooxml.OOXMLParser" },
     }).collect(Collectors.toMap(kv -> kv[0], kv -> kv[1]));
 
     private TikaConfiguration config;
@@ -96,9 +106,18 @@ public class TikaProcessor {
         resource.produce(new ReflectiveClassBuildItem(true, true, "org.apache.poi.POIXMLTextExtractor"));
         resource.produce(new ReflectiveClassBuildItem(true, true, "org.apache.poi.openxml4j.opc.ZipPackagePart"));
         resource.produce(new ReflectiveClassBuildItem(true, true, "org.apache.poi.openxml4j.opc.PackagePart"));
-        resource.produce(new ReflectiveClassBuildItem(true, true, true, "org.apache.poi.xwpf.usermodel.XWPFSettings"));
-        resource.produce(new ReflectiveClassBuildItem(true, true, true, "org.apache.poi.xwpf.usermodel.XWPFStyles"));
-        resource.produce(new ReflectiveClassBuildItem(true, true, true, "org.apache.poi.ooxml.POIXMLDocumentPart"));
+
+        //docx
+        resource.produce(new ReflectiveClassBuildItem(true, true, true, XWPFSettings.class.getName()));
+        resource.produce(new ReflectiveClassBuildItem(true, true, true, XWPFStyles.class.getName()));
+
+        //pptx
+        resource.produce(new ReflectiveClassBuildItem(true, true, true, STPlaceholderType.Enum.class.getName()));
+        ReflectUtil.getAllClassesFromPackage(XSLFTheme.class.getPackage().getName(), POIXMLDocumentPart.class)
+                .forEach(aClass -> resource.produce(
+                        new ReflectiveClassBuildItem(true, true, true, aClass)));
+
+        resource.produce(new ReflectiveClassBuildItem(true, true, true, POIXMLDocumentPart.class.getName()));
 
         resource.produce(new ReflectiveClassBuildItem(true, true, "org.apache.xmlbeans.impl.values.XmlComplexContentImpl"));
         resource.produce(new ReflectiveClassBuildItem(true, true, "org.apache.xmlbeans.impl.schema.SchemaTypeLoaderImpl"));
@@ -114,12 +133,21 @@ public class TikaProcessor {
         resource.produce(new ReflectiveClassBuildItem(true, true,
                 "schemaorg_apache_xmlbeans.system.sD023D6490046BA0250A839A9AD24C443.TypeSystemHolder"));
 
-        String wordprocessingImplPackageName = DocumentDocumentImpl.class.getPackage().getName();
-        Reflections reflections = new Reflections(wordprocessingImplPackageName);
-        reflections.getSubTypesOf(XmlObject.class)
-                .stream()
-                .filter(aClass -> !aClass.isInterface())
-                .filter(aClass -> aClass.getPackage().getName().equals(wordprocessingImplPackageName))
+        //pptx
+        ReflectUtil.getAllClassesFromPackage(ThemeDocumentImpl.class.getPackage().getName(), XmlObject.class)
+                .forEach(aClass -> resource.produce(
+                        new ReflectiveClassBuildItem(true, true, true, aClass)));
+        ReflectUtil.getAllClassesFromPackage(
+                PresentationDocumentImpl.class.getPackage().getName(),
+                XmlObject.class)
+                .forEach(aClass -> resource.produce(
+                        new ReflectiveClassBuildItem(true, true, true, aClass)));
+        //xlsx
+        ReflectUtil.getAllClassesFromPackage(CalcChainDocumentImpl.class.getPackage().getName(), XmlObject.class)
+                .forEach(aClass -> resource.produce(
+                        new ReflectiveClassBuildItem(true, true, true, aClass)));
+        //docx
+        ReflectUtil.getAllClassesFromPackage(DocumentDocumentImpl.class.getPackage().getName(), XmlObject.class)
                 .forEach(aClass -> resource.produce(
                         new ReflectiveClassBuildItem(true, true, true, aClass)));
     }
@@ -130,9 +158,12 @@ public class TikaProcessor {
     }
 
     @BuildStep
-    public void registerOOXMLResources(BuildProducer<NativeImageResourceDirectoryBuildItem> resource) throws Exception {
+    public void registerOOXMLResources(BuildProducer<NativeImageResourceDirectoryBuildItem> resource,
+            BuildProducer<NativeImageResourceBuildItem> resourceBuildItem) throws Exception {
         resource.produce(new NativeImageResourceDirectoryBuildItem(
                 "schemaorg_apache_xmlbeans/system/sD023D6490046BA0250A839A9AD24C443"));
+        resourceBuildItem.produce(new NativeImageResourceBuildItem("org/apache/xalan/res/XSLTInfo.properties"));
+        resourceBuildItem.produce(new NativeImageResourceBuildItem("org/apache/xalan/internal/res/XSLTInfo.properties"));
     }
 
     @BuildStep
@@ -166,10 +197,13 @@ public class TikaProcessor {
                         getProviderNames(EncodingDetector.class.getName())));
         serviceProvider.produce(
                 new ServiceProviderBuildItem(XMLParserConfiguration.class.getName(),
-                        Arrays.asList("org.apache.xerces.parsers.XIncludeAwareParserConfiguration")));
+                        Arrays.asList(XIncludeAwareParserConfiguration.class.getName())));
         serviceProvider.produce(
                 new ServiceProviderBuildItem(SAXParserFactory.class.getName(),
                         getProviderNames(SAXParserFactory.class.getName())));
+        serviceProvider.produce(
+                new ServiceProviderBuildItem(TransformerFactory.class.getName(),
+                        getProviderNames(TransformerFactory.class.getName())));
     }
 
     static List<String> getProviderNames(String serviceProviderName) throws Exception {

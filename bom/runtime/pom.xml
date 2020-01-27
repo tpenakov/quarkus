@@ -179,6 +179,9 @@
         <jzlib.version>1.1.1</jzlib.version>
         <checker-qual.version>2.5.2</checker-qual.version>
         <error-prone-annotations.version>2.2.0</error-prone-annotations.version>
+        <reflections.version>0.9.12</reflections.version>
+        <ooxml-schemas.version>1.4</ooxml-schemas.version>
+        <xmlbeans.version>3.0.2</xmlbeans.version>
     </properties>
 
     <dependencyManagement>
@@ -1101,6 +1104,10 @@
                     <exclusion>
                         <groupId>org.apache.cxf</groupId>
                         <artifactId>cxf-rt-rs-client</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.apache.poi</groupId>
+                        <artifactId>poi-ooxml-schemas</artifactId>
                     </exclusion>
                 </exclusions>
                 <version>${tika.version}</version>
@@ -2676,6 +2683,31 @@
                 <groupId>io.quarkus.qute</groupId>
                 <artifactId>qute-rxjava</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+
+
+            <dependency>
+                <groupId>org.reflections</groupId>
+                <artifactId>reflections</artifactId>
+                <version>${reflections.version}</version>
+            </dependency>
+
+            <!-- ooxml -->
+            <dependency>
+                <groupId>org.apache.poi</groupId>
+                <artifactId>ooxml-schemas</artifactId>
+                <version>${ooxml-schemas.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.apache.xmlbeans</groupId>
+                        <artifactId>xmlbeans</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.xmlbeans</groupId>
+                <artifactId>xmlbeans</artifactId>
+                <version>${xmlbeans.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
